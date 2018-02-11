@@ -1,6 +1,10 @@
 #include <string>
-
+#include <iostream>
+#include <fstream>
+#include <iterator>
+#include <deque>
 #pragma once
+#define MAX_BUFFER_SIZE 1000
 class SliceHeaderParser
 {
 public:
@@ -8,9 +12,14 @@ public:
 	~SliceHeaderParser();
 	void parse();
 private:
-	void processBuffer(const char *buf, int size);
+	bool parseMdat();
+	int _fileOffset = 0;
+	int _bufferOffset = 0;
+	
+	std::ifstream _fileStream;
+	
 	std::string _file;
+	std::deque <char> _queue;
 	void log(const std::string &msg);
-	int isNalStart(const char * buf, int size);
 };
 

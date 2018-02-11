@@ -1,99 +1,41 @@
 #include "stdafx.h"
 
 #include "SliceHeaderParser.h"
-#include <iostream>
-#include <fstream>
 
 
-SliceHeaderParser::SliceHeaderParser(const std::string &file) : _file (file) {
+SliceHeaderParser::SliceHeaderParser(const std::string &file) : _file (file), _fileStream(file, std::ios::in | std::ios::binary) {
 
 }
-
 
 SliceHeaderParser::~SliceHeaderParser() {
 
 }
 
-int SliceHeaderParser::isNalStart(const char * buf, int size) {		
-	switch (size) {
-		case 4: {
-			if (buf[0] == 0x00 && buf[1] == 0x00 && buf[2] == 0x00 && buf[3] == 0x01) {
-				return 4;
-			}
-			break;
-		}
-		case 3: {
-			if (buf[0] == 0x00 && buf[1] == 0x00 && buf[2] == 0x01) {
-				return 3;
-			}
-			break;
-		}
-		case 2: {
-			if (buf[0] == 0x00 && buf[1] == 0x00) {
-				return 2;
-			}
-		}
-		case 1: {
-			if (buf[0] == 0x00) {
-				return 1;
-			}
-			break;
-		}
+bool SliceHeaderParser::parseMdat() {
+	if (_queue.size() != 4)
+		return false;
+	if (_queue[3] == 'm' && _queue[2] == 'd' && _queue[1] == 'a' && _queue[0] == 't') {
+		return true;
 	}
-	return -1;
-}
-
-void SliceHeaderParser::processBuffer(const char * buf, int size) {	
-	int bytesLeft = size;
-	int offset = 0;
-	while (bytesLeft) {
-		int nalSize = isNalStart(buf + offset, bytesLeft > 4 ? 4 : bytesLeft);
-		if (nalSize == 3 || nalSize == 4) {
-			int forbiddenZeroBit = 0;
-			int nalRefIdc = 0;
-			int nalUnitType = 0;
-
-			unsigned char firstByte = buf[offset + nalSize];
-			forbiddenZeroBit = (firstByte & 0x80) >> 7;
-			if (!forbiddenZeroBit) {
-				nalRefIdc = (firstByte & 0x70) >> 4;
-				nalUnitType = (firstByte & 0x1f);
-				printf("offset: %d forbiddenZeroBit: %d nalRefIdc: %d nalUnitType %d \n", offset, forbiddenZeroBit, nalRefIdc, nalUnitType);
-				switch (nalUnitType) {
-				case 7:
-					printf("SPS");
-					break;
-				case 8:
-					printf("PPS");
-					break;
-				case 5:
-					printf("IDR slice");
-					break;
-				case 1:
-					printf("Non - IDR slice");
-					break;
-				default: break;
-				}
-			}
-		}
-		offset++;
-		bytesLeft--;
-	}
+	return false;
+	
 }
 
 void SliceHeaderParser::parse() {
-	const int bufferSize = 100;
-	std::ifstream fileStream("video.mp4", std::ios::in | std::ios::binary);
-	if (!fileStream.is_open()) {
-		return;
+	std::istream_iterator<char> begin(_fileStream), end;
+	std::istream_iterator<char> pos;
+	int byteOffset = 0;
+	for (pos = begin; pos != end; pos++) {
+		if (_queue.size() == 4) {
+			_queue.pop_back();
+		}
+		_queue.push_front(*pos);
+		byteOffset++;
+		if (parseMdat()) {
+			printf("Mdat");
+		}
 	}
 
-	int bNum = 0;
-	char buffer [bufferSize];
-	while (!fileStream.read(buffer, bufferSize).eof()) {		
-		printf("%d \n",bNum++);
-		processBuffer(buffer, bufferSize);
-	} 
 }
 
 void SliceHeaderParser::log(const std::string &msg) {
