@@ -48,19 +48,36 @@ void SliceHeaderParser::processBuffer(const char * buf, int size) {
 	int offset = 0;
 	while (bytesLeft) {
 		int nalSize = isNalStart(buf + offset, bytesLeft > 4 ? 4 : bytesLeft);
-		offset++;
-		bytesLeft--;
 		if (nalSize == 3 || nalSize == 4) {
 			int forbiddenZeroBit = 0;
 			int nalRefIdc = 0;
 			int nalUnitType = 0;
 
-			char firstByte = buf[offset + nalSize];
+			unsigned char firstByte = buf[offset + nalSize];
 			forbiddenZeroBit = (firstByte & 0x80) >> 7;
-			nalRefIdc = (firstByte & 0x70) >> 4;
-			nalUnitType = (firstByte & 0x1f);
-			printf("offset: %d forbiddenZeroBit: %d nalRefIdc: %d nalUnitType %d \n", offset, forbiddenZeroBit, nalRefIdc, nalUnitType);
+			if (!forbiddenZeroBit) {
+				nalRefIdc = (firstByte & 0x70) >> 4;
+				nalUnitType = (firstByte & 0x1f);
+				printf("offset: %d forbiddenZeroBit: %d nalRefIdc: %d nalUnitType %d \n", offset, forbiddenZeroBit, nalRefIdc, nalUnitType);
+				switch (nalUnitType) {
+				case 7:
+					printf("SPS");
+					break;
+				case 8:
+					printf("PPS");
+					break;
+				case 5:
+					printf("IDR slice");
+					break;
+				case 1:
+					printf("Non - IDR slice");
+					break;
+				default: break;
+				}
+			}
 		}
+		offset++;
+		bytesLeft--;
 	}
 }
 
@@ -70,8 +87,11 @@ void SliceHeaderParser::parse() {
 	if (!fileStream.is_open()) {
 		return;
 	}
+
+	int bNum = 0;
 	char buffer [bufferSize];
 	while (!fileStream.read(buffer, bufferSize).eof()) {		
+		printf("%d \n",bNum++);
 		processBuffer(buffer, bufferSize);
 	} 
 }
