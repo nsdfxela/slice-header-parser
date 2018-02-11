@@ -13,13 +13,16 @@ public:
 	void parse();
 private:
 	bool parseMdat();
-	int _fileOffset = 0;
-	int _bufferOffset = 0;
+	void parseNalu(int &type);
 	
+	int byteOffset = 0;
 	std::ifstream _fileStream;
 	
 	std::string _file;
-	std::deque <char> _queue;
+	std::deque <unsigned char> _queue;
 	void log(const std::string &msg);
+
+	std::istreambuf_iterator<char> begin, end;
+	std::istreambuf_iterator<char> pos;
 };
 
